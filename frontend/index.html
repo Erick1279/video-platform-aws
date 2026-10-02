@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen">
+  <!-- Barra superior -->
+  <header class="border-b border-slate-800 bg-slate-950 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-red-500 cursor-pointer" onclick="showHome()">CloudVideo</h1>
+      <div id="authSection" class="flex gap-3 items-center"></div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Paneles de Autenticación -->
+    <div id="authForms" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+        <h2 class="text-lg font-bold mb-4 text-emerald-400">Crear Cuenta (Registro)</h2>
+        <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-3">
+          <input type="text" id="regName" placeholder="Nombre completo" required class="w-full p-2.5 rounded bg-slate-900 border border-slate-700 text-white">
+          <input type="email" id="regEmail" placeholder="Correo electrónico" required class="w-full p-2.5 rounded bg-slate-900 border border-slate-700 text-white">
+          <input type="password" id="regPassword" placeholder="Contraseña" required class="w-full p-2.5 rounded bg-slate-900 border border-slate-700 text-white">
+          <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded font-semibold transition">Registrarse</button>
+        </form>
+      </div>
+
+      <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+        <h2 class="text-lg font-bold mb-4 text-sky-400">Iniciar Sesión (Login)</h2>
+        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-3">
+          <input type="email" id="loginEmail" placeholder="Correo electrónico" required class="w-full p-2.5 rounded bg-slate-900 border border-slate-700 text-white">
+          <input type="password" id="loginPassword" placeholder="Contraseña" required class="w-full p-2.5 rounded bg-slate-900 border border-slate-700 text-white">
+          <button type="submit" class="w-full py-2 bg-sky-600 hover:bg-sky-500 rounded font-semibold transition">Entrar</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Vista de Perfil de Usuario -->
+    <div id="profileSection" class="hidden bg-slate-800 p-6 rounded-lg border border-slate-700 mb-8">
+      <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+        <h2 class="text-xl font-bold text-indigo-400">Perfil del Usuario</h2>
+        <button onclick="showHome()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded">Cerrar Perfil</button>
+      </div>
+      <div id="profileDetails" class="space-y-2 text-slate-300 mb-6"></div>
+      <h3 class="font-bold text-md text-white mb-3">Mis Videos Publicados</h3>
+      <div id="userVideosGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    </div>
+
+    <!-- Formulario para Publicación de Videos -->
+    <div id="uploadSection" class="hidden bg-slate-800 p-6 rounded-lg border border-slate-700 mb-8">
+      <h2 class="text-lg font-bold mb-4 text-red-400">Publicar Nuevo Video</h2>
+      <form id="uploadForm" onsubmit="handleUpload(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Título</label>
+          <input type="text" id="videoTitle" required class="w-full p-2.5 rounded bg-slate-900 border border-slate-700 text-white">
+        </div>
+        <div>
+          <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Descripción</label>
+          <textarea id="videoDesc" rows="2" required class="w-full p-2.5 rounded bg-slate-900 border border-slate-700 text-white"></textarea>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Archivo de Video (.mp4)</label>
+            <input type="file" id="videoFile" accept="video/*" required class="w-full text-slate-300">
+          </div>
+          <div>
+            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Miniatura (.jpg, .png)</label>
+            <input type="file" id="thumbFile" accept="image/*" required class="w-full text-slate-300">
+          </div>
+        </div>
+        <button id="uploadBtn" type="submit" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 rounded font-semibold transition">Subir a S3</button>
+        <span id="uploadStatus" class="ml-3 text-sm text-yellow-400"></span>
+      </form>
+    </div>
+
+    <!-- Vista de Reproducción y Recomendados -->
+    <div id="playerSection" class="hidden mb-8">
+      <button onclick="closePlayer()" class="mb-4 text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded text-slate-300">← Volver al Catálogo</button>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Reproductor y Comentarios -->
+        <div class="lg:col-span-2 bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <video id="mainVideoPlayer" controls class="w-full max-h-[480px] rounded-lg bg-black mb-4"></video>
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <h2 id="currentVideoTitle" class="text-2xl font-bold"></h2>
+              <p id="currentVideoUser" class="text-sm text-slate-400"></p>
+            </div>
+            <span id="currentVideoViews" class="text-sm bg-slate-800 px-3 py-1 rounded text-slate-300"></span>
+          </div>
+          <p id="currentVideoDesc" class="text-slate-300 mb-6 bg-slate-900 p-3 rounded"></p>
+
+          <!-- Comentarios -->
+          <div class="border-t border-slate-800 pt-4">
+            <h3 class="font-bold text-lg mb-3">Comentarios</h3>
+            <form onsubmit="handleComment(event)" class="flex gap-2 mb-4">
+              <input type="text" id="commentText" placeholder="Escribe un comentario..." required class="flex-1 p-2 rounded bg-slate-900 border border-slate-700 text-white">
+              <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded font-semibold">Comentar</button>
+            </form>
+            <div id="commentsList" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <!-- Columna de Videos Recomendados -->
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <h3 class="font-bold text-lg mb-4 text-amber-400">Videos Recomendados</h3>
+          <div id="recommendedGrid" class="space-y-4"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Catálogo de videos -->
+    <div id="catalogSection">
+      <h2 class="text-xl font-bold mb-4">Catálogo de Videos</h2>
+      <div id="videosGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+    </div>
+  </main>
+
+  <script>
+    const API_BASE = "http://3.145.115.163:8000";
+    let currentUser = JSON.parse(localStorage.getItem("cloudUser")) || null;
+    let activeVideoId = null;
+    let allVideos = [];
+
+    function renderAuth() {
+      const authSection = document.getElementById("authSection");
+      const uploadSection = document.getElementById("uploadSection");
+      const authForms = document.getElementById("authForms");
+
+      if (currentUser) {
+        authSection.innerHTML = `
+          <button onclick="showProfile()" class="text-sm bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded font-semibold">Mi Perfil (${currentUser.name})</button>
+          <button onclick="handleLogout()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded">Salir</button>
+        `;
+        uploadSection.classList.remove("hidden");
+        authForms.classList.add("hidden");
+      } else {
+        authSection.innerHTML = `<span class="text-xs text-slate-400">Inicia sesión para interactuar</span>`;
+        uploadSection.classList.add("hidden");
+        authForms.classList.remove("hidden");
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const body = {
+        name: document.getElementById("regName").value,
+        email: document.getElementById("regEmail").value,
+        password: document.getElementById("regPassword").value
+      };
+      const res = await fetch(`${API_BASE}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        alert("Registro exitoso. Ahora inicia sesión.");
+        document.getElementById("registerForm").reset();
+      } else {
+        const err = await res.json();
+        alert(err.detail || "Error en registro");
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const formData = new FormData();
+      formData.append("email", document.getElementById("loginEmail").value);
+      formData.append("password", document.getElementById("loginPassword").value);
+
+      const res = await fetch(`${API_BASE}/login`, { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok) {
+        currentUser = data;
+        localStorage.setItem("cloudUser", JSON.stringify(data));
+        renderAuth();
+      } else {
+        alert(data.detail || "Credenciales incorrectas");
+      }
+    }
+
+    function handleLogout() {
+      currentUser = null;
+      localStorage.removeItem("cloudUser");
+      document.getElementById("profileSection").classList.add("hidden");
+      renderAuth();
+    }
+
+    async function handleUpload(e) {
+      e.preventDefault();
+      if (!currentUser) return alert("Debes iniciar sesión");
+
+      const status = document.getElementById("uploadStatus");
+      const btn = document.getElementById("uploadBtn");
+      status.innerText = "Subiendo archivo a S3...";
+      btn.disabled = true;
+
+      const formData = new FormData();
+      formData.append("title", document.getElementById("videoTitle").value);
+      formData.append("description", document.getElementById("videoDesc").value);
+      formData.append("user_id", currentUser.user_id);
+      formData.append("video_file", document.getElementById("videoFile").files[0]);
+      formData.append("thumbnail_file", document.getElementById("thumbFile").files[0]);
+
+      try {
+        const res = await fetch(`${API_BASE}/videos`, { method: "POST", body: formData });
+        if (res.ok) {
+          status.innerText = "¡Video publicado con éxito!";
+          document.getElementById("uploadForm").reset();
+          loadVideos();
+        } else {
+          status.innerText = "Error al subir video";
+        }
+      } catch (err) {
+        status.innerText = "Error en la petición";
+      } finally {
+        btn.disabled = false;
+        setTimeout(() => status.innerText = "", 4000);
+      }
+    }
+
+    async function loadVideos() {
+      const grid = document.getElementById("videosGrid");
+      grid.innerHTML = "<p class='text-slate-400'>Cargando catálogo...</p>";
+      try {
+        const res = await fetch(`${API_BASE}/videos`);
+        allVideos = await res.json();
+        grid.innerHTML = "";
+        if (allVideos.length === 0) {
+          grid.innerHTML = "<p class='text-slate-500'>No hay videos disponibles.</p>";
+          return;
+        }
+        allVideos.forEach(v => {
+          const card = document.createElement("div");
+          card.className = "bg-slate-800 rounded-lg overflow-hidden border border-slate-700 cursor-pointer hover:border-slate-500 transition";
+          card.onclick = () => openPlayer(v.id);
+          card.innerHTML = `
+            <img src="${v.thumbnail_url}" alt="${v.title}" class="w-full h-40 object-cover">
+            <div class="p-3">
+              <h3 class="font-bold text-sm truncate">${v.title}</h3>
+              <p class="text-xs text-slate-400">${v.user_name || 'Autor'} • ${v.views} vistas</p>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      } catch (e) {
+        grid.innerHTML = "<p class='text-red-400'>Error al conectar con la API</p>";
+      }
+    }
+
+    async function openPlayer(videoId) {
+      activeVideoId = videoId;
+      document.getElementById("profileSection").classList.add("hidden");
+      document.getElementById("catalogSection").classList.add("hidden");
+      document.getElementById("uploadSection").classList.add("hidden");
+
+      const res = await fetch(`${API_BASE}/videos/${videoId}`);
+      const video = await res.json();
+
+      document.getElementById("currentVideoTitle").innerText = video.title;
+      document.getElementById("currentVideoUser").innerText = `Subido por: ${video.user_name || 'Autor'}`;
+      document.getElementById("currentVideoViews").innerText = `${video.views} vistas`;
+      document.getElementById("currentVideoDesc").innerText = video.description;
+      
+      const player = document.getElementById("mainVideoPlayer");
+      player.src = video.video_url;
+      player.play();
+
+      document.getElementById("playerSection").classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      loadComments(videoId);
+      loadRecommended(videoId);
+    }
+
+    function loadRecommended(currentId) {
+      const recGrid = document.getElementById("recommendedGrid");
+      recGrid.innerHTML = "";
+      const filtered = allVideos.filter(v => v.id !== currentId);
+      if (filtered.length === 0) {
+        recGrid.innerHTML = "<p class='text-xs text-slate-500'>No hay más videos sugeridos.</p>";
+        return;
+      }
+      filtered.forEach(v => {
+        const item = document.createElement("div");
+        item.className = "flex gap-3 bg-slate-900 p-2 rounded cursor-pointer hover:bg-slate-800 transition";
+        item.onclick = () => openPlayer(v.id);
+        item.innerHTML = `
+          <img src="${v.thumbnail_url}" class="w-24 h-16 object-cover rounded">
+          <div class="flex-1 min-w-0">
+            <h4 class="font-semibold text-xs truncate">${v.title}</h4>
+            <p class="text-xs text-slate-400 mt-1">${v.user_name || 'Autor'}</p>
+            <span class="text-[10px] text-slate-500">${v.views} vistas</span>
+          </div>
+        `;
+        recGrid.appendChild(item);
+      });
+    }
+
+    function closePlayer() {
+      const player = document.getElementById("mainVideoPlayer");
+      player.pause();
+      player.src = "";
+      document.getElementById("playerSection").classList.add("hidden");
+      document.getElementById("catalogSection").classList.remove("hidden");
+      if (currentUser) document.getElementById("uploadSection").classList.remove("hidden");
+      loadVideos();
+    }
+
+    function showHome() {
+      document.getElementById("profileSection").classList.add("hidden");
+      closePlayer();
+    }
+
+    async function showProfile() {
+      if (!currentUser) return;
+      closePlayer();
+      document.getElementById("catalogSection").classList.add("hidden");
+      document.getElementById("uploadSection").classList.add("hidden");
+
+      const res = await fetch(`${API_BASE}/users/${currentUser.user_id}`);
+      const user = await res.json();
+
+      document.getElementById("profileDetails").innerHTML = `
+        <p><strong>Nombre:</strong> ${user.name}</p>
+        <p><strong>Correo:</strong> ${user.email}</p>
+        <p><strong>ID de Usuario:</strong> ${user.id}</p>
+      `;
+
+      const grid = document.getElementById("userVideosGrid");
+      grid.innerHTML = "";
+      const userVids = allVideos.filter(v => v.user_id === currentUser.user_id);
+      if (userVids.length === 0) {
+        grid.innerHTML = "<p class='text-xs text-slate-500'>Aún no has publicado videos.</p>";
+      } else {
+        userVids.forEach(v => {
+          const card = document.createElement("div");
+          card.className = "bg-slate-900 p-2 rounded border border-slate-800";
+          card.innerHTML = `
+            <img src="${v.thumbnail_url}" class="w-full h-28 object-cover rounded mb-2">
+            <p class="font-bold text-xs truncate">${v.title}</p>
+            <span class="text-[10px] text-slate-400">${v.views} vistas</span>
+          `;
+          grid.appendChild(card);
+        });
+      }
+
+      document.getElementById("profileSection").classList.remove("hidden");
+    }
+
+    async function loadComments(videoId) {
+      const list = document.getElementById("commentsList");
+      list.innerHTML = "<p class='text-xs text-slate-500'>Cargando comentarios...</p>";
+      const res = await fetch(`${API_BASE}/videos/${videoId}/comments`);
+      const comments = await res.json();
+      list.innerHTML = "";
+      if (comments.length === 0) {
+        list.innerHTML = "<p class='text-xs text-slate-500'>Sin comentarios. ¡Sé el primero!</p>";
+        return;
+      }
+      comments.forEach(c => {
+        const item = document.createElement("div");
+        item.className = "bg-slate-900 p-2.5 rounded text-sm";
+        item.innerHTML = `<span class="font-bold text-xs text-slate-400">${c.user_name || 'Usuario'}:</span> <p class="text-slate-200 mt-0.5">${c.content}</p>`;
+        list.appendChild(item);
+      });
+    }
+
+    async function handleComment(e) {
+      e.preventDefault();
+      if (!currentUser) return alert("Debes iniciar sesión para comentar");
+      const input = document.getElementById("commentText");
+      const formData = new FormData();
+      formData.append("user_id", currentUser.user_id);
+      formData.append("content", input.value);
+
+      const res = await fetch(`${API_BASE}/videos/${activeVideoId}/comments`, {
+        method: "POST",
+        body: formData
+      });
+      if (res.ok) {
+        input.value = "";
+        loadComments(activeVideoId);
+      }
+    }
+
+    renderAuth();
+    loadVideos();
+  </script>
+</body>
+</html>
